@@ -32,7 +32,6 @@
                 <button class="nav-tab" data-view="recipes">Recipes</button>
             </nav>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="openImportModal()" title="Import Recipe"><span>📥</span></button>
                 <button class="btn btn-primary" onclick="openAddRecipeModal()"><span>+</span> <span>Add Recipe</span></button>
             </div>
         </div>
@@ -112,7 +111,7 @@
         </div>
     </main>
 
-    <!-- Modals -->
+    <!-- Add Recipe Modal -->
     <div class="modal-overlay" id="add-recipe-modal">
         <div class="modal">
             <div class="modal-header">
@@ -156,7 +155,13 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Source URL (optional)</label>
-                        <input type="url" class="form-input" name="sourceUrl" placeholder="https://...">
+                        <input type="url" class="form-input" name="sourceUrl" placeholder="https://halfbakedharvest.com/...">
+                        <p class="form-hint">Link to original recipe for reference</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image URL (optional)</label>
+                        <input type="url" class="form-input" name="imageUrl" placeholder="https://...image.jpg">
+                        <p class="form-hint">Direct link to a recipe photo</p>
                     </div>
                 </form>
             </div>
@@ -167,29 +172,7 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="import-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Import Recipe</h3>
-                <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: var(--space-lg); color: var(--color-warm-gray);">
-                    Paste a recipe URL from your favorite food blogs. We'll automatically apply dietary substitutions.
-                </p>
-                <div class="import-form">
-                    <input type="url" class="form-input" id="import-url" placeholder="https://halfbakedharvest.com/...">
-                    <button class="btn btn-primary" onclick="importRecipe()">Import</button>
-                </div>
-                <div class="substitution-note">
-                    <strong>🔄 Auto-substitutions applied:</strong>
-                    Dairy → Goat alternatives | Seed oils → Olive/Avocado oil | Wheat flour → Gluten-free flour
-                </div>
-                <div id="import-preview"></div>
-            </div>
-        </div>
-    </div>
-
+    <!-- Recipe Detail Modal -->
     <div class="modal-overlay" id="recipe-detail-modal">
         <div class="modal modal-large">
             <div class="modal-header">
@@ -200,6 +183,55 @@
         </div>
     </div>
 
+    <!-- Edit Recipe Modal -->
+    <div class="modal-overlay" id="edit-recipe-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Recipe</h3>
+                <button class="modal-close" onclick="closeModal('edit-recipe-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-recipe-form" onsubmit="handleEditRecipe(event)">
+                    <input type="hidden" name="id" id="edit-recipe-id">
+                    <div class="form-group">
+                        <label class="form-label">Recipe Name *</label>
+                        <input type="text" class="form-input" name="name" id="edit-name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Prep Time (min)</label>
+                            <input type="number" class="form-input" name="prepTime" id="edit-prepTime">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cook Time (min)</label>
+                            <input type="number" class="form-input" name="cookTime" id="edit-cookTime">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Servings</label>
+                            <input type="number" class="form-input" name="servings" id="edit-servings">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Source URL</label>
+                        <input type="url" class="form-input" name="sourceUrl" id="edit-sourceUrl" placeholder="https://...">
+                        <p class="form-hint">Link to original recipe</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Image URL</label>
+                        <input type="url" class="form-input" name="imageUrl" id="edit-imageUrl" placeholder="https://...image.jpg">
+                        <p class="form-hint">Direct link to a recipe photo</p>
+                    </div>
+                    <div id="edit-image-preview" class="image-preview"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('edit-recipe-modal')">Cancel</button>
+                <button class="btn btn-primary" type="submit" form="edit-recipe-form">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Recipe Modal -->
     <div class="modal-overlay" id="select-recipe-modal">
         <div class="modal">
             <div class="modal-header">
@@ -219,7 +251,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
-    <!-- App Configuration -->
+    <!-- App -->
     <script src="firebase-config.js"></script>
     <script src="app.js"></script>
 </body>
