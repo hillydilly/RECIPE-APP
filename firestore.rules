@@ -1,0 +1,54 @@
+// Firestore Security Rules
+// ========================
+// Copy these rules to your Firebase Console:
+// 1. Go to Firestore Database > Rules tab
+// 2. Replace the default rules with these
+// 3. Click Publish
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Recipes collection
+    match /recipes/{recipeId} {
+      // Allow read/write for now (single user mode)
+      // For multi-user, add: && request.auth != null && request.auth.uid == resource.data.userId
+      allow read, write: if true;
+    }
+    
+    // Weekly plans collection
+    match /weeklyPlans/{planId} {
+      allow read, write: if true;
+    }
+    
+    // Settings collection
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}
+
+// =====================================================
+// PRODUCTION RULES (when you add Firebase Auth)
+// =====================================================
+// Uncomment and use these rules when you implement authentication:
+//
+// rules_version = '2';
+// service cloud.firestore {
+//   match /databases/{database}/documents {
+//     
+//     match /recipes/{recipeId} {
+//       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+//       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+//       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+//     }
+//     
+//     match /weeklyPlans/{planId} {
+//       allow read, write: if request.auth != null && planId == request.auth.uid;
+//     }
+//     
+//     match /settings/{settingId} {
+//       allow read, write: if request.auth != null && settingId == request.auth.uid;
+//     }
+//   }
+// }

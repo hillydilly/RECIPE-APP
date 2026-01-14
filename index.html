@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nourish — Family Meal Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
+</head>
+<body>
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">🍃</div>
+            <div class="loading-text">Nourish</div>
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon">🍃</div>
+                <div class="logo-text">Nourish</div>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-view="daily">Today</button>
+                <button class="nav-tab" data-view="weekly">Weekly Plan</button>
+                <button class="nav-tab" data-view="shopping">Shopping</button>
+                <button class="nav-tab" data-view="recipes">Recipes</button>
+            </nav>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="openImportModal()" title="Import Recipe"><span>📥</span></button>
+                <button class="btn btn-primary" onclick="openAddRecipeModal()"><span>+</span> <span>Add Recipe</span></button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="mobile-nav">
+        <div class="mobile-nav-inner">
+            <button class="mobile-nav-btn active" data-view="daily"><span class="icon">🍽️</span>Today</button>
+            <button class="mobile-nav-btn" data-view="weekly"><span class="icon">📅</span>Week</button>
+            <button class="mobile-nav-btn" data-view="shopping"><span class="icon">🛒</span>Shop</button>
+            <button class="mobile-nav-btn" data-view="recipes"><span class="icon">📖</span>Recipes</button>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="container">
+            <div id="daily-view" class="view active">
+                <div class="daily-header">
+                    <div class="daily-date" id="current-date"></div>
+                    <h1 class="daily-title">What's cooking today?</h1>
+                    <p class="daily-subtitle">Here's a suggestion from your rotation</p>
+                </div>
+                <div class="suggestion-card" id="daily-suggestion"></div>
+                <div class="favorites-section">
+                    <div class="section-header"><h2 class="section-title">Your Favorites</h2></div>
+                    <div class="recipe-grid" id="favorites-grid"></div>
+                </div>
+            </div>
+
+            <div id="weekly-view" class="view">
+                <div class="weekly-header">
+                    <div class="week-nav">
+                        <button class="week-nav-btn" onclick="changeWeek(-1)">←</button>
+                        <h2 class="week-title" id="week-title">This Week</h2>
+                        <button class="week-nav-btn" onclick="changeWeek(1)">→</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="generateWeeklyPlan()">✨ <span>Auto-fill Week</span></button>
+                </div>
+                <div class="week-grid" id="week-grid"></div>
+            </div>
+
+            <div id="shopping-view" class="view">
+                <div class="shopping-header">
+                    <div>
+                        <h1 class="shopping-title">Shopping List</h1>
+                        <p class="shopping-subtitle" id="shopping-subtitle">Based on your weekly plan</p>
+                    </div>
+                    <div class="shopping-actions">
+                        <button class="btn btn-secondary" onclick="clearCheckedItems()">Clear Checked</button>
+                        <button class="btn btn-primary" onclick="regenerateShoppingList()">🔄 <span>Regenerate</span></button>
+                    </div>
+                </div>
+                <div class="shopping-categories" id="shopping-categories"></div>
+            </div>
+
+            <div id="recipes-view" class="view">
+                <div class="recipes-header">
+                    <h1 class="recipes-title">Recipe Collection</h1>
+                    <div class="recipes-search">
+                        <input type="text" class="search-input" placeholder="Search recipes..." id="recipe-search" oninput="filterRecipes()">
+                    </div>
+                </div>
+                <div class="stats-bar">
+                    <div class="stat-item"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Recipes</div></div>
+                    <div class="stat-item"><div class="stat-value" id="stat-available">0</div><div class="stat-label">Available Now</div></div>
+                    <div class="stat-item"><div class="stat-value" id="stat-favorites">0</div><div class="stat-label">Favorites</div></div>
+                    <div class="stat-item"><div class="stat-value" id="stat-rotation">21</div><div class="stat-label">Day Rotation</div></div>
+                </div>
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-filter="all">All</button>
+                    <button class="filter-chip" data-filter="available">Available</button>
+                    <button class="filter-chip" data-filter="favorites">Favorites</button>
+                    <button class="filter-chip" data-filter="quick">Quick (&lt; 30 min)</button>
+                </div>
+                <div class="recipe-grid" id="all-recipes-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="add-recipe-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New Recipe</h3>
+                <button class="modal-close" onclick="closeModal('add-recipe-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-recipe-form" onsubmit="handleAddRecipe(event)">
+                    <div class="form-group">
+                        <label class="form-label">Recipe Name *</label>
+                        <input type="text" class="form-input" name="name" required placeholder="e.g., Honey Garlic Salmon">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Prep Time (min)</label>
+                            <input type="number" class="form-input" name="prepTime" placeholder="15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cook Time (min)</label>
+                            <input type="number" class="form-input" name="cookTime" placeholder="25">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Servings</label>
+                            <input type="number" class="form-input" name="servings" placeholder="4">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ingredients</label>
+                        <textarea class="form-textarea" name="ingredients" placeholder="One ingredient per line"></textarea>
+                        <p class="form-hint">Enter one ingredient per line</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Instructions</label>
+                        <textarea class="form-textarea" name="instructions" placeholder="One step per line"></textarea>
+                        <p class="form-hint">Enter one step per line</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <input type="text" class="form-input" name="tags" placeholder="e.g., dinner, seafood, quick">
+                        <p class="form-hint">Comma-separated tags</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Source URL (optional)</label>
+                        <input type="url" class="form-input" name="sourceUrl" placeholder="https://...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('add-recipe-modal')">Cancel</button>
+                <button class="btn btn-primary" type="submit" form="add-recipe-form">Add Recipe</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="import-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Import Recipe</h3>
+                <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: var(--space-lg); color: var(--color-warm-gray);">
+                    Paste a recipe URL from your favorite food blogs. We'll automatically apply dietary substitutions.
+                </p>
+                <div class="import-form">
+                    <input type="url" class="form-input" id="import-url" placeholder="https://halfbakedharvest.com/...">
+                    <button class="btn btn-primary" onclick="importRecipe()">Import</button>
+                </div>
+                <div class="substitution-note">
+                    <strong>🔄 Auto-substitutions applied:</strong>
+                    Dairy → Goat alternatives | Seed oils → Olive/Avocado oil | Wheat flour → Gluten-free flour
+                </div>
+                <div id="import-preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="recipe-detail-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3 class="modal-title">Recipe Details</h3>
+                <button class="modal-close" onclick="closeModal('recipe-detail-modal')">✕</button>
+            </div>
+            <div id="recipe-detail-content"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="select-recipe-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Select Recipe</h3>
+                <button class="modal-close" onclick="closeModal('select-recipe-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="form-input" id="recipe-selector-search" placeholder="Search recipes..." oninput="filterRecipeSelector()" style="margin-bottom: var(--space-lg);">
+                <div class="recipe-selector" id="recipe-selector"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- App Configuration -->
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
