@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nourish — Family Meal Planner</title>
+    <title>Hillard Family Recipe App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
 </head>
 <body>
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <div class="loading-logo">🍃</div>
-            <div class="loading-text">Nourish</div>
+            <div class="loading-logo">🏠</div>
+            <div class="loading-text">Hillard Family Recipes</div>
             <div class="loading-spinner"></div>
         </div>
     </div>
@@ -22,8 +22,8 @@
     <header class="header">
         <div class="header-inner">
             <div class="logo">
-                <div class="logo-icon">🍃</div>
-                <div class="logo-text">Nourish</div>
+                <div class="logo-icon">🏠</div>
+                <div class="logo-text">Hillard Family</div>
             </div>
             <nav class="nav-tabs">
                 <button class="nav-tab active" data-view="daily">Today</button>
@@ -48,19 +48,29 @@
 
     <main class="main">
         <div class="container">
+            <!-- DAILY VIEW -->
             <div id="daily-view" class="view active">
                 <div class="daily-header">
                     <div class="daily-date" id="current-date"></div>
                     <h1 class="daily-title">What's cooking today?</h1>
-                    <p class="daily-subtitle">Here's a suggestion from your rotation</p>
+                    <p class="daily-subtitle">Choose from your favorites or discover something new</p>
                 </div>
+                
+                <!-- Suggestion Buttons -->
+                <div class="suggestion-toggle">
+                    <button class="suggestion-toggle-btn active" data-type="favorite" onclick="setSuggestionType('favorite')">❤️ From Favorites</button>
+                    <button class="suggestion-toggle-btn" data-type="discover" onclick="setSuggestionType('discover')">✨ Discover New</button>
+                </div>
+                
                 <div class="suggestion-card" id="daily-suggestion"></div>
+                
                 <div class="favorites-section">
                     <div class="section-header"><h2 class="section-title">Your Favorites</h2></div>
                     <div class="recipe-grid" id="favorites-grid"></div>
                 </div>
             </div>
 
+            <!-- WEEKLY VIEW -->
             <div id="weekly-view" class="view">
                 <div class="weekly-header">
                     <div class="week-nav">
@@ -73,6 +83,7 @@
                 <div class="week-grid" id="week-grid"></div>
             </div>
 
+            <!-- SHOPPING VIEW -->
             <div id="shopping-view" class="view">
                 <div class="shopping-header">
                     <div>
@@ -87,6 +98,7 @@
                 <div class="shopping-categories" id="shopping-categories"></div>
             </div>
 
+            <!-- RECIPES VIEW -->
             <div id="recipes-view" class="view">
                 <div class="recipes-header">
                     <h1 class="recipes-title">Recipe Collection</h1>
@@ -104,6 +116,8 @@
                     <button class="filter-chip active" data-filter="all">All</button>
                     <button class="filter-chip" data-filter="available">Available</button>
                     <button class="filter-chip" data-filter="favorites">Favorites</button>
+                    <button class="filter-chip" data-filter="lunch">Lunch</button>
+                    <button class="filter-chip" data-filter="dinner">Dinner</button>
                     <button class="filter-chip" data-filter="quick">Quick (&lt; 30 min)</button>
                 </div>
                 <div class="recipe-grid" id="all-recipes-grid"></div>
@@ -119,48 +133,69 @@
                 <button class="modal-close" onclick="closeModal('add-recipe-modal')">✕</button>
             </div>
             <div class="modal-body">
+                <!-- URL Import Section -->
+                <div class="url-import-section">
+                    <div class="form-group">
+                        <label class="form-label">Import from URL</label>
+                        <div class="url-import-row">
+                            <input type="url" class="form-input" id="import-url" placeholder="https://www.halfbakedharvest.com/recipe...">
+                            <button class="btn btn-primary" onclick="importFromUrl()" id="import-btn">Import</button>
+                        </div>
+                        <p class="form-hint">Paste a recipe URL and we'll try to auto-fill the details</p>
+                    </div>
+                    <div class="divider"><span>or enter manually</span></div>
+                </div>
+                
                 <form id="add-recipe-form" onsubmit="handleAddRecipe(event)">
                     <div class="form-group">
                         <label class="form-label">Recipe Name *</label>
-                        <input type="text" class="form-input" name="name" required placeholder="e.g., Honey Garlic Salmon">
+                        <input type="text" class="form-input" name="name" id="add-name" required placeholder="e.g., Honey Garlic Salmon">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Meal Type</label>
+                        <div class="meal-type-toggle">
+                            <button type="button" class="meal-type-btn" data-meal="lunch" onclick="toggleMealType(this, 'add')">🥗 Lunch</button>
+                            <button type="button" class="meal-type-btn active" data-meal="dinner" onclick="toggleMealType(this, 'add')">🍽️ Dinner</button>
+                        </div>
+                        <input type="hidden" name="mealType" id="add-mealType" value="dinner">
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Prep Time (min)</label>
-                            <input type="number" class="form-input" name="prepTime" placeholder="15">
+                            <input type="number" class="form-input" name="prepTime" id="add-prepTime" placeholder="15">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Cook Time (min)</label>
-                            <input type="number" class="form-input" name="cookTime" placeholder="25">
+                            <input type="number" class="form-input" name="cookTime" id="add-cookTime" placeholder="25">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Servings</label>
-                            <input type="number" class="form-input" name="servings" placeholder="4">
+                            <input type="number" class="form-input" name="servings" id="add-servings" placeholder="4">
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Ingredients</label>
-                        <textarea class="form-textarea" name="ingredients" placeholder="One ingredient per line"></textarea>
+                        <textarea class="form-textarea" name="ingredients" id="add-ingredients" placeholder="One ingredient per line"></textarea>
                         <p class="form-hint">Enter one ingredient per line</p>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Instructions</label>
-                        <textarea class="form-textarea" name="instructions" placeholder="One step per line"></textarea>
+                        <textarea class="form-textarea" name="instructions" id="add-instructions" placeholder="One step per line"></textarea>
                         <p class="form-hint">Enter one step per line</p>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Tags</label>
-                        <input type="text" class="form-input" name="tags" placeholder="e.g., dinner, seafood, quick">
+                        <input type="text" class="form-input" name="tags" id="add-tags" placeholder="e.g., dinner, seafood, quick">
                         <p class="form-hint">Comma-separated tags</p>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Source URL (optional)</label>
-                        <input type="url" class="form-input" name="sourceUrl" placeholder="https://halfbakedharvest.com/...">
+                        <label class="form-label">Source URL</label>
+                        <input type="url" class="form-input" name="sourceUrl" id="add-sourceUrl" placeholder="https://halfbakedharvest.com/...">
                         <p class="form-hint">Link to original recipe for reference</p>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Image URL (optional)</label>
-                        <input type="url" class="form-input" name="imageUrl" placeholder="https://...image.jpg">
+                        <input type="url" class="form-input" name="imageUrl" id="add-imageUrl" placeholder="https://...image.jpg">
                         <p class="form-hint">Direct link to a recipe photo</p>
                     </div>
                 </form>
@@ -197,6 +232,14 @@
                         <label class="form-label">Recipe Name *</label>
                         <input type="text" class="form-input" name="name" id="edit-name" required>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Meal Type</label>
+                        <div class="meal-type-toggle" id="edit-meal-type-toggle">
+                            <button type="button" class="meal-type-btn" data-meal="lunch" onclick="toggleMealType(this, 'edit')">🥗 Lunch</button>
+                            <button type="button" class="meal-type-btn" data-meal="dinner" onclick="toggleMealType(this, 'edit')">🍽️ Dinner</button>
+                        </div>
+                        <input type="hidden" name="mealType" id="edit-mealType" value="dinner">
+                    </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Prep Time (min)</label>
@@ -210,6 +253,18 @@
                             <label class="form-label">Servings</label>
                             <input type="number" class="form-input" name="servings" id="edit-servings">
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ingredients</label>
+                        <textarea class="form-textarea" name="ingredients" id="edit-ingredients"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Instructions</label>
+                        <textarea class="form-textarea" name="instructions" id="edit-instructions"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tags</label>
+                        <input type="text" class="form-input" name="tags" id="edit-tags">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Source URL</label>
@@ -235,7 +290,7 @@
     <div class="modal-overlay" id="select-recipe-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">Select Recipe</h3>
+                <h3 class="modal-title" id="select-recipe-title">Select Recipe</h3>
                 <button class="modal-close" onclick="closeModal('select-recipe-modal')">✕</button>
             </div>
             <div class="modal-body">
