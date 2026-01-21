@@ -562,17 +562,42 @@ function generateShoppingList() {
         meals.forEach(rid => {
             const r = appData.recipes.find(x => x.id === rid);
             r?.ingredients?.forEach(ing => { 
-                // Create a stable ID based on the ingredient text
-                const cleanName = ing.toLowerCase().trim();
+                // Clean the ingredient text before displaying
+                const cleanedIng = cleanIngredientText(ing);
+                if (!cleanedIng) return; // Skip empty lines
+                
+                // Create a stable ID based on the cleaned ingredient text
+                const cleanName = cleanedIng.toLowerCase().trim();
                 const stableId = 'ing_' + cleanName.replace(/[^a-z0-9]/g, '_').substring(0, 50);
                 if (!ings[cleanName]) {
-                    ings[cleanName] = { id: stableId, name: ing, category: categorize(ing) }; 
+                    ings[cleanName] = { id: stableId, name: cleanedIng, category: categorize(cleanedIng) }; 
                 }
             });
         });
     });
     Object.values(ings).forEach(i => { if (!cats[i.category]) cats[i.category] = []; cats[i.category].push(i); });
     return cats;
+}
+
+// Clean ingredient text - removes checkboxes, bullets, and other artifacts
+function cleanIngredientText(text) {
+    if (!text) return '';
+    return text
+        // Remove checkbox characters (empty and checked variants)
+        .replace(/[\u2610\u2611\u2612\u2713\u2714\u2715\u2716\u2717\u2718]/g, '')
+        .replace(/[☐☑☒✓✔✕✖✗✘▢▣◻◼◽◾]/g, '')
+        .replace(/[\uFE0F]/g, '') // Remove emoji variation selectors
+        // Remove box drawing characters that might look like checkboxes
+        .replace(/[□■◯●○◎]/g, '')
+        // Remove common bullet points
+        .replace(/^[\s•\-\*\>\|\u2022\u2023\u2043\u204C\u204D\u2219\u25AA\u25AB\u25CF\u25CB\u25D8\u25D9]+/g, '')
+        // Remove numbered list prefixes
+        .replace(/^\d+[\.\)]\s*/g, '')
+        // Remove lettered list prefixes
+        .replace(/^[a-zA-Z][\.\)]\s*/g, '')
+        // Normalize whitespace
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 function categorize(i) {
@@ -609,6 +634,54 @@ async function toggleShoppingItem(id) {
 }
 async function clearCheckedItems() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('Cart cleared', 'success'); renderShoppingView(); }
 async function regenerateShoppingList() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('List regenerated!', 'success'); renderShoppingView(); }
+
+// Clean all recipes - removes checkbox characters from existing recipes
+async function cleanAllRecipes() {
+    if (!confirm('This will clean checkbox characters and other formatting artifacts from all your recipes. Continue?')) return;
+    
+    let cleanedCount = 0;
+    
+    for (const recipe of appData.recipes) {
+        let needsUpdate = false;
+        
+        // Clean ingredients
+        if (recipe.ingredients && recipe.ingredients.length > 0) {
+            const cleanedIngredients = recipe.ingredients
+                .map(ing => cleanIngredientText(ing))
+                .filter(ing => ing); // Remove empty strings
+            
+            if (JSON.stringify(cleanedIngredients) !== JSON.stringify(recipe.ingredients)) {
+                recipe.ingredients = cleanedIngredients;
+                needsUpdate = true;
+            }
+        }
+        
+        // Clean instructions too
+        if (recipe.instructions && recipe.instructions.length > 0) {
+            const cleanedInstructions = recipe.instructions
+                .map(inst => cleanIngredientText(inst))
+                .filter(inst => inst);
+            
+            if (JSON.stringify(cleanedInstructions) !== JSON.stringify(recipe.instructions)) {
+                recipe.instructions = cleanedInstructions;
+                needsUpdate = true;
+            }
+        }
+        
+        if (needsUpdate) {
+            await FirebaseDB.updateRecipe(recipe.id, { 
+                ingredients: recipe.ingredients,
+                instructions: recipe.instructions 
+            });
+            cleanedCount++;
+        }
+    }
+    
+    showToast(`Cleaned ${cleanedCount} recipe${cleanedCount !== 1 ? 's' : ''}!`, 'success');
+    showSyncIndicator('Synced ✓');
+    renderRecipesView();
+    renderShoppingView();
+}
 
 // ===== RECIPES VIEW =====
 function renderRecipesView() { updateStats(); renderAllRecipes(); initFilterChips(); }
@@ -1017,12 +1090,9 @@ function parseServings(yield_) {
 
 function applySubstitutions(ing) {
     // First, clean up any checkbox characters, bullet points, or other paste artifacts
-    let cleaned = ing
-        .replace(/[\u2610\u2611\u2612\u2713\u2714\u2715\u2716\u2717\u2718☐☑☒✓✔✕✖✗✘▢▣◻◼◽◾☐️☑️]/g, '') // checkbox chars
-        .replace(/^[\s•\-\*\>\|\u2022\u2023\u2043\u204C\u204D\u2219\u25AA\u25AB\u25CF\u25CB\u25D8\u25D9]+/g, '') // bullets at start
-        .replace(/^\d+[\.\)]\s*/g, '') // numbered list prefixes like "1." or "1)"
-        .replace(/\s+/g, ' ') // normalize whitespace
-        .trim();
+    let cleaned = cleanIngredientText(ing);
+    
+    if (!cleaned) return '';
     
     // Then apply dietary substitutions
     return cleaned

@@ -246,6 +246,14 @@
             padding: 0.35rem 0.75rem;
             font-size: 0.8rem;
         }
+        
+        /* Recipes Header Actions */
+        .recipes-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -340,8 +348,11 @@
             <div id="recipes-view" class="view">
                 <div class="recipes-header">
                     <h1 class="recipes-title">Recipe Collection</h1>
-                    <div class="recipes-search">
-                        <input type="text" class="search-input" placeholder="Search recipes..." id="recipe-search" oninput="filterRecipes()">
+                    <div class="recipes-header-actions">
+                        <button class="btn btn-secondary btn-small" onclick="cleanAllRecipes()" title="Remove checkbox characters from all recipes">🧹 Clean Recipes</button>
+                        <div class="recipes-search">
+                            <input type="text" class="search-input" placeholder="Search recipes..." id="recipe-search" oninput="filterRecipes()">
+                        </div>
                     </div>
                 </div>
                 <div class="stats-bar">
