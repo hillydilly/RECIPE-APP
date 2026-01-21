@@ -475,66 +475,79 @@ async function removeMealFromDay(dk, rid, slot) {
 }
 
 // ===== SHOPPING VIEW =====
-let recentlyCheckedItems = []; // Track recently checked items for this session
-
 function renderShoppingView() {
     const cats = generateShoppingList(), container = document.getElementById('shopping-categories');
     const cfg = { produce:{icon:'🥬',name:'Produce'}, protein:{icon:'🥩',name:'Protein'}, dairy:{icon:'🧀',name:'Dairy Alt'}, pantry:{icon:'🫙',name:'Pantry'}, spices:{icon:'🌿',name:'Spices'}, other:{icon:'📦',name:'Other'} };
     
     if (!Object.keys(cats).length) { 
-        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🛒</div><h3 class="empty-state-title">Empty</h3><button class="btn btn-primary" onclick="switchView(\'weekly\')">Plan Week</button></div>'; 
+        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🛒</div><h3 class="empty-state-title">Shopping list is empty</h3><p>Add meals to your weekly plan to generate a shopping list.</p><button class="btn btn-primary" onclick="switchView(\'weekly\')">Plan Your Week</button></div>'; 
         return; 
     }
     
-    // Build all items for checking recently checked
+    // Build all items list
     const allItems = Object.values(cats).flat();
-    const checkedItemsData = allItems.filter(item => appData.checkedItems.includes(item.id));
+    const needToBuy = allItems.filter(item => !appData.checkedItems.includes(item.id));
+    const inCart = allItems.filter(item => appData.checkedItems.includes(item.id));
     
-    // Recently Checked Section
-    let recentlyCheckedHTML = '';
-    if (checkedItemsData.length > 0) {
-        recentlyCheckedHTML = `
-            <div class="recently-checked-section">
-                <div class="recently-checked-header">
-                    <span class="recently-checked-icon">✅</span>
-                    <span class="recently-checked-title">In Cart (${checkedItemsData.length})</span>
-                    <button class="btn btn-small btn-secondary" onclick="clearCheckedItems()">Clear All</button>
-                </div>
-                <div class="recently-checked-items">
-                    ${checkedItemsData.map(item => `
-                        <div class="recently-checked-item" onclick="toggleShoppingItem('${item.id}')">
-                            <span class="item-name">${item.name}</span>
-                            <span class="item-remove">✕</span>
+    let html = '';
+    
+    // NEED TO BUY section
+    html += `<div class="shopping-section need-to-buy">
+        <div class="shopping-section-header">
+            <h2>🛒 Need to Buy (${needToBuy.length})</h2>
+        </div>`;
+    
+    if (needToBuy.length === 0) {
+        html += `<div class="shopping-complete">
+            <div class="complete-icon">🎉</div>
+            <p>All done! You have everything.</p>
+        </div>`;
+    } else {
+        // Group by category
+        const needByCategory = {};
+        needToBuy.forEach(item => {
+            if (!needByCategory[item.category]) needByCategory[item.category] = [];
+            needByCategory[item.category].push(item);
+        });
+        
+        html += '<div class="shopping-items-grid">';
+        Object.entries(needByCategory).forEach(([cat, items]) => {
+            const c = cfg[cat] || cfg.other;
+            html += `<div class="shopping-category">
+                <div class="category-label">${c.icon} ${c.name}</div>
+                <div class="category-items-list">
+                    ${items.map(item => `
+                        <div class="shopping-item" onclick="markAsPurchased('${item.id}')">
+                            <span class="item-checkbox">○</span>
+                            <span class="item-text">${item.name}</span>
                         </div>
                     `).join('')}
                 </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    // IN CART section
+    if (inCart.length > 0) {
+        html += `<div class="shopping-section in-cart">
+            <div class="shopping-section-header">
+                <h2>✅ In Cart (${inCart.length})</h2>
+                <button class="btn btn-small btn-secondary" onclick="clearCheckedItems()">Clear All</button>
             </div>
-        `;
+            <div class="cart-items">
+                ${inCart.map(item => `
+                    <div class="cart-item" onclick="markAsNeeded('${item.id}')">
+                        <span class="item-check">✓</span>
+                        <span class="item-text">${item.name}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
     }
     
-    // Category cards - only show unchecked items
-    const categoryHTML = Object.entries(cats).map(([cat, items]) => {
-        const uncheckedItems = items.filter(item => !appData.checkedItems.includes(item.id));
-        if (uncheckedItems.length === 0) return ''; // Hide empty categories
-        
-        const c = cfg[cat] || cfg.other;
-        return `<div class="category-card"><div class="category-header ${cat}"><span class="category-icon">${c.icon}</span><span class="category-name">${c.name}</span><span class="category-count">${uncheckedItems.length}</span></div><div class="category-items">${uncheckedItems.map(item => {
-            return `<div class="shopping-item"><div class="shopping-checkbox" onclick="toggleShoppingItem('${item.id}')"></div><span class="shopping-item-text">${item.name}</span></div>`;
-        }).join('')}</div></div>`;
-    }).filter(html => html).join('');
-    
-    container.innerHTML = recentlyCheckedHTML + categoryHTML;
-    
-    // Show completion message if all items checked
-    if (categoryHTML === '' && checkedItemsData.length > 0) {
-        container.innerHTML = recentlyCheckedHTML + `
-            <div class="all-done-message">
-                <div class="all-done-icon">🎉</div>
-                <h3>All done!</h3>
-                <p>You've got everything on your list.</p>
-            </div>
-        `;
-    }
+    container.innerHTML = html;
 }
 
 function generateShoppingList() {
@@ -549,8 +562,12 @@ function generateShoppingList() {
         meals.forEach(rid => {
             const r = appData.recipes.find(x => x.id === rid);
             r?.ingredients?.forEach(ing => { 
-                const k = ing.toLowerCase().trim(); 
-                if (!ings[k]) ings[k] = { id: Date.now().toString(36)+Math.random().toString(36).substr(2), name: ing, category: categorize(ing) }; 
+                // Create a stable ID based on the ingredient text
+                const cleanName = ing.toLowerCase().trim();
+                const stableId = 'ing_' + cleanName.replace(/[^a-z0-9]/g, '_').substring(0, 50);
+                if (!ings[cleanName]) {
+                    ings[cleanName] = { id: stableId, name: ing, category: categorize(ing) }; 
+                }
             });
         });
     });
@@ -560,12 +577,29 @@ function generateShoppingList() {
 
 function categorize(i) {
     const l = i.toLowerCase();
-    if (/chicken|beef|lamb|pork|fish|salmon|shrimp|cod|turkey/.test(l)) return 'protein';
+    if (/chicken|beef|lamb|pork|fish|salmon|shrimp|cod|turkey|steak/.test(l)) return 'protein';
     if (/goat|coconut cream|coconut milk|ghee/.test(l)) return 'dairy';
-    if (/spinach|lettuce|zucchini|tomato|onion|garlic|pepper|potato|carrot|celery|basil|parsley|cilantro|mint|dill|lime|lemon|ginger/.test(l)) return 'produce';
-    if (/cumin|coriander|turmeric|paprika|cinnamon|oregano|thyme|rosemary|salt|pepper/.test(l)) return 'spices';
-    if (/flour|oil|honey|vinegar|sauce|sugar|broth|aminos|tapioca/.test(l)) return 'pantry';
+    if (/spinach|lettuce|zucchini|tomato|onion|garlic|pepper|potato|carrot|celery|basil|parsley|cilantro|mint|dill|lime|lemon|ginger|cucumber|mango|avocado|jalapen|serrano|poblano|bell pepper|green onion|scallion/.test(l)) return 'produce';
+    if (/cumin|coriander|turmeric|paprika|cinnamon|oregano|thyme|rosemary|salt|pepper|chili powder|gochujang|sesame/.test(l)) return 'spices';
+    if (/flour|oil|honey|vinegar|sauce|sugar|broth|aminos|tapioca|rice|tortilla|worcestershire/.test(l)) return 'pantry';
     return 'other';
+}
+
+async function markAsPurchased(id) {
+    if (!appData.checkedItems.includes(id)) {
+        appData.checkedItems.push(id);
+        await FirebaseDB.saveSettings({ checkedItems: appData.checkedItems });
+        renderShoppingView();
+    }
+}
+
+async function markAsNeeded(id) {
+    const idx = appData.checkedItems.indexOf(id);
+    if (idx > -1) {
+        appData.checkedItems.splice(idx, 1);
+        await FirebaseDB.saveSettings({ checkedItems: appData.checkedItems });
+        renderShoppingView();
+    }
 }
 
 async function toggleShoppingItem(id) {
@@ -573,8 +607,8 @@ async function toggleShoppingItem(id) {
     if (idx > -1) appData.checkedItems.splice(idx, 1); else appData.checkedItems.push(id);
     await FirebaseDB.saveSettings({ checkedItems: appData.checkedItems }); renderShoppingView();
 }
-async function clearCheckedItems() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('Cleared', 'success'); renderShoppingView(); }
-async function regenerateShoppingList() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('Regenerated!', 'success'); renderShoppingView(); }
+async function clearCheckedItems() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('Cart cleared', 'success'); renderShoppingView(); }
+async function regenerateShoppingList() { appData.checkedItems = []; await FirebaseDB.saveSettings({ checkedItems: [] }); showToast('List regenerated!', 'success'); renderShoppingView(); }
 
 // ===== RECIPES VIEW =====
 function renderRecipesView() { updateStats(); renderAllRecipes(); initFilterChips(); }
@@ -982,7 +1016,24 @@ function parseServings(yield_) {
 }
 
 function applySubstitutions(ing) {
-    return ing.replace(/\b(milk)\b/gi,'goat milk').replace(/\b(cream)\b(?!.*coconut)/gi,'coconut cream').replace(/\b(butter)\b(?!.*ghee)/gi,'ghee').replace(/\b(cheese)\b/gi,'goat cheese').replace(/\b(yogurt)\b/gi,'coconut yogurt').replace(/\b(vegetable oil|canola oil|sunflower oil|safflower oil|soybean oil)\b/gi,'avocado oil').replace(/\b(all-purpose flour|wheat flour|bread flour)\b/gi,'gluten-free flour').replace(/\b(soy sauce)\b/gi,'coconut aminos');
+    // First, clean up any checkbox characters, bullet points, or other paste artifacts
+    let cleaned = ing
+        .replace(/[\u2610\u2611\u2612\u2713\u2714\u2715\u2716\u2717\u2718☐☑☒✓✔✕✖✗✘▢▣◻◼◽◾☐️☑️]/g, '') // checkbox chars
+        .replace(/^[\s•\-\*\>\|\u2022\u2023\u2043\u204C\u204D\u2219\u25AA\u25AB\u25CF\u25CB\u25D8\u25D9]+/g, '') // bullets at start
+        .replace(/^\d+[\.\)]\s*/g, '') // numbered list prefixes like "1." or "1)"
+        .replace(/\s+/g, ' ') // normalize whitespace
+        .trim();
+    
+    // Then apply dietary substitutions
+    return cleaned
+        .replace(/\b(milk)\b/gi,'goat milk')
+        .replace(/\b(cream)\b(?!.*coconut)/gi,'coconut cream')
+        .replace(/\b(butter)\b(?!.*ghee)/gi,'ghee')
+        .replace(/\b(cheese)\b/gi,'goat cheese')
+        .replace(/\b(yogurt)\b/gi,'coconut yogurt')
+        .replace(/\b(vegetable oil|canola oil|sunflower oil|safflower oil|soybean oil)\b/gi,'avocado oil')
+        .replace(/\b(all-purpose flour|wheat flour|bread flour)\b/gi,'gluten-free flour')
+        .replace(/\b(soy sauce)\b/gi,'coconut aminos');
 }
 
 // ===== INIT =====
