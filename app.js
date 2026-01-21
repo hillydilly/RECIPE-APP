@@ -141,27 +141,87 @@ function setSuggestionType(type) {
     renderDailyView();
 }
 
+// ===== DISCOVER NEW RECIPES =====
+// Recipe discovery criteria for Hillard family: dairy-free, wheat-free, no seed oils
+const DISCOVER_RECIPES = [
+    { name: 'Coconut Curry Shrimp', prepTime: 10, cookTime: 20, servings: 4, mealType: 'dinner', tags: ['dinner', 'seafood', 'thai', 'curry'], description: 'Creamy coconut curry with plump shrimp, bell peppers, and fresh basil served over rice.' },
+    { name: 'Lemon Herb Grilled Chicken Thighs', prepTime: 15, cookTime: 25, servings: 4, mealType: 'dinner', tags: ['dinner', 'chicken', 'grilled', 'mediterranean'], description: 'Juicy chicken thighs marinated in lemon, garlic, and fresh herbs.' },
+    { name: 'Asian Lettuce Wraps', prepTime: 10, cookTime: 15, servings: 4, mealType: 'lunch', tags: ['lunch', 'chicken', 'asian', 'low-carb'], description: 'Savory ground chicken with water chestnuts in crisp lettuce cups.' },
+    { name: 'Chimichurri Flank Steak', prepTime: 20, cookTime: 12, servings: 6, mealType: 'dinner', tags: ['dinner', 'beef', 'argentinian', 'grilled'], description: 'Perfectly grilled flank steak topped with vibrant herb chimichurri.' },
+    { name: 'Thai Basil Fried Rice', prepTime: 10, cookTime: 15, servings: 4, mealType: 'dinner', tags: ['dinner', 'rice', 'thai', 'quick'], description: 'Fragrant fried rice with Thai basil, eggs, and your choice of protein.' },
+    { name: 'Mediterranean Salmon Bowls', prepTime: 15, cookTime: 15, servings: 4, mealType: 'dinner', tags: ['dinner', 'seafood', 'mediterranean', 'healthy'], description: 'Baked salmon over quinoa with cucumbers, olives, and tzatziki.' },
+    { name: 'Vietnamese Caramelized Pork', prepTime: 15, cookTime: 45, servings: 6, mealType: 'dinner', tags: ['dinner', 'pork', 'vietnamese', 'asian'], description: 'Tender pork belly caramelized in coconut aminos and fish sauce.' },
+    { name: 'Greek Chicken Skewers', prepTime: 30, cookTime: 12, servings: 4, mealType: 'dinner', tags: ['dinner', 'chicken', 'greek', 'grilled'], description: 'Marinated chicken skewers with lemon, oregano, and garlic.' },
+    { name: 'Coconut Lime Chicken Soup', prepTime: 10, cookTime: 25, servings: 6, mealType: 'lunch', tags: ['lunch', 'soup', 'thai', 'chicken'], description: 'Light and refreshing soup with coconut milk, lime, and fresh herbs.' },
+    { name: 'Honey Garlic Glazed Salmon', prepTime: 5, cookTime: 15, servings: 4, mealType: 'dinner', tags: ['dinner', 'seafood', 'quick', 'asian-fusion'], description: 'Quick pan-seared salmon with a sticky honey garlic glaze.' },
+    { name: 'Mexican Cauliflower Rice Bowls', prepTime: 15, cookTime: 20, servings: 4, mealType: 'lunch', tags: ['lunch', 'mexican', 'low-carb', 'healthy'], description: 'Seasoned cauliflower rice topped with chicken, avocado, and fresh salsa.' },
+    { name: 'Italian Herb Meatballs', prepTime: 20, cookTime: 25, servings: 6, mealType: 'dinner', tags: ['dinner', 'beef', 'italian'], description: 'Tender meatballs made with almond flour in homemade marinara.' },
+    { name: 'Teriyaki Chicken Stir-Fry', prepTime: 15, cookTime: 15, servings: 4, mealType: 'dinner', tags: ['dinner', 'chicken', 'asian', 'quick'], description: 'Crispy chicken and vegetables in homemade coconut aminos teriyaki.' },
+    { name: 'Tuscan White Bean Soup', prepTime: 10, cookTime: 30, servings: 6, mealType: 'lunch', tags: ['lunch', 'soup', 'italian', 'vegetarian'], description: 'Hearty white bean soup with kale, tomatoes, and Italian herbs.' },
+    { name: 'Caribbean Jerk Pork Tenderloin', prepTime: 15, cookTime: 25, servings: 4, mealType: 'dinner', tags: ['dinner', 'pork', 'caribbean', 'spicy'], description: 'Spicy jerk-seasoned pork tenderloin with mango salsa.' }
+];
+
+function getDiscoverSuggestion() {
+    // Filter out recipes we already have by name similarity
+    const existingNames = appData.recipes.map(r => r.name.toLowerCase());
+    const newRecipes = DISCOVER_RECIPES.filter(r => {
+        const nameLower = r.name.toLowerCase();
+        return !existingNames.some(existing => 
+            existing.includes(nameLower) || nameLower.includes(existing) ||
+            existing.split(' ').filter(w => w.length > 4).some(word => nameLower.includes(word))
+        );
+    });
+    
+    // Return a random new recipe or fallback to any discover recipe
+    const pool = newRecipes.length > 0 ? newRecipes : DISCOVER_RECIPES;
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // ===== DAILY VIEW =====
 function renderDailyView() {
     document.getElementById('current-date').textContent = formatDate(new Date());
     
-    let pool;
-    let suggestionLabel;
+    const el = document.getElementById('daily-suggestion');
     
-    if (suggestionType === 'favorite') {
-        // From favorites that are available
-        pool = appData.recipes.filter(r => r.favorite && isRecipeAvailable(r));
-        if (pool.length === 0) pool = appData.recipes.filter(r => r.favorite); // Fall back to all favorites
-        suggestionLabel = '❤️ From Your Favorites';
-    } else {
-        // Discover: non-favorites that are available
-        pool = appData.recipes.filter(r => !r.favorite && isRecipeAvailable(r));
-        if (pool.length === 0) pool = appData.recipes.filter(r => !r.favorite);
-        suggestionLabel = '✨ Discover Something New';
+    if (suggestionType === 'discover') {
+        // Show a discovery suggestion (new recipe idea)
+        const disc = getDiscoverSuggestion();
+        const time = (disc.prepTime||0) + (disc.cookTime||0);
+        const mealBadge = `<span class="meal-type-badge ${disc.mealType || 'dinner'}">${getMealTypeEmoji(disc.mealType)} ${(disc.mealType || 'dinner').charAt(0).toUpperCase() + (disc.mealType || 'dinner').slice(1)}</span>`;
+        
+        el.innerHTML = `<div class="suggestion-content"><div class="suggestion-details">
+            <div class="suggestion-label"><span>✨ Discover Something New</span></div>
+            <h2 class="suggestion-recipe-name">${disc.name}</h2>
+            <p class="discover-description">${disc.description}</p>
+            <div class="suggestion-meta">
+                ${mealBadge}
+                <span class="meta-item">⏱️ ${time} min</span>
+                <span class="meta-item">👥 ${disc.servings||4}</span>
+            </div>
+            <div class="suggestion-tags">${(disc.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}<span class="tag dietary">Dairy-free</span><span class="tag dietary">Wheat-free</span></div>
+            <div class="suggestion-actions" style="margin-top:var(--space-md)">
+                <button class="btn btn-primary btn-large" onclick="addDiscoverRecipe()">➕ Add to My Recipes</button>
+                <button class="btn btn-secondary btn-large" onclick="searchForRecipe('${disc.name.replace(/'/g, "\\'")}')">🔍 Search Online</button>
+                <button class="btn btn-secondary btn-large" onclick="renderDailyView();showToast('New suggestion!','success')">🔄 Different</button>
+            </div>
+        </div></div>`;
+        
+        // Store current discover suggestion for adding
+        window.currentDiscoverSuggestion = disc;
+        
+        // Still render favorites section
+        const fg = document.getElementById('favorites-grid');
+        const fav = appData.recipes.filter(r => r.favorite);
+        fg.innerHTML = fav.length === 0 ? '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">💝</div><h3 class="empty-state-title">No favorites</h3></div>' : fav.map(renderRecipeCard).join('');
+        return;
     }
     
+    // From favorites that are available
+    let pool = appData.recipes.filter(r => r.favorite && isRecipeAvailable(r));
+    if (pool.length === 0) pool = appData.recipes.filter(r => r.favorite); // Fall back to all favorites
+    const suggestionLabel = '❤️ From Your Favorites';
+    
     const s = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : appData.recipes[0];
-    const el = document.getElementById('daily-suggestion');
     
     if (!s) { 
         el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><h3 class="empty-state-title">No recipes yet</h3><button class="btn btn-primary" onclick="openAddRecipeModal()">Add Recipe</button></div>'; 
@@ -204,6 +264,40 @@ async function cookRecipe(id) {
         showSyncIndicator('Synced ✓'); 
         renderDailyView(); 
     }
+}
+
+// Add a discovered recipe to the collection
+async function addDiscoverRecipe() {
+    const disc = window.currentDiscoverSuggestion;
+    if (!disc) return;
+    
+    const recipe = {
+        name: disc.name,
+        prepTime: disc.prepTime || 0,
+        cookTime: disc.cookTime || 0,
+        servings: disc.servings || 4,
+        mealType: disc.mealType || 'dinner',
+        ingredients: [],
+        instructions: [],
+        tags: disc.tags || [],
+        sourceUrl: '',
+        imageUrl: '',
+        favorite: false,
+        lastCooked: null
+    };
+    
+    const newRecipe = await FirebaseDB.addRecipe(recipe);
+    appData.recipes.push(newRecipe);
+    showToast(`Added "${recipe.name}" to your recipes!`, 'success');
+    showSyncIndicator('Synced ✓');
+    renderDailyView();
+    renderRecipesView();
+}
+
+// Search for a recipe online
+function searchForRecipe(name) {
+    const query = encodeURIComponent(`${name} recipe dairy free gluten free`);
+    window.open(`https://www.google.com/search?q=${query}`, '_blank');
 }
 
 // ===== WEEKLY VIEW (with Lunch/Dinner) =====
@@ -310,22 +404,38 @@ function openRecipeSelector(dk, mealSlot) {
 function renderRecipeSelector() {
     const search = document.getElementById('recipe-selector-search')?.value?.toLowerCase() || '';
     
-    // Filter by meal type preference
+    // Get currently selected recipes for this day
+    const dayPlan = appData.weeklyPlan[selectedDayForRecipe] || { lunch: [], dinner: [] };
+    const currentMealRecipes = Array.isArray(dayPlan) ? dayPlan : (dayPlan[selectedMealSlot] || []);
+    
+    // Don't filter by meal type anymore - show all recipes and let user decide
     let recipes = appData.recipes.filter(r => r.name.toLowerCase().includes(search));
-    if (selectedMealSlot === 'lunch') {
-        recipes = recipes.filter(r => r.mealType === 'lunch' || r.tags?.includes('lunch') || r.mealType === undefined);
-    } else if (selectedMealSlot === 'dinner') {
-        recipes = recipes.filter(r => r.mealType === 'dinner' || r.mealType === undefined || r.tags?.includes('dinner'));
-    }
+    
+    // Sort: meal-type matching recipes first, then others
+    recipes.sort((a, b) => {
+        const aMatches = (selectedMealSlot === 'lunch' && (a.mealType === 'lunch' || a.tags?.includes('lunch'))) ||
+                        (selectedMealSlot === 'dinner' && (a.mealType === 'dinner' || a.mealType === undefined));
+        const bMatches = (selectedMealSlot === 'lunch' && (b.mealType === 'lunch' || b.tags?.includes('lunch'))) ||
+                        (selectedMealSlot === 'dinner' && (b.mealType === 'dinner' || b.mealType === undefined));
+        if (aMatches && !bMatches) return -1;
+        if (!aMatches && bMatches) return 1;
+        return 0;
+    });
     
     document.getElementById('recipe-selector').innerHTML = recipes.map(r => {
         const avail = isRecipeAvailable(r), days = getDaysSinceCooked(r);
+        const alreadySelected = currentMealRecipes.includes(r.id);
         const thumb = r.imageUrl ? `<img src="${r.imageUrl}" class="recipe-selector-thumb" onerror="this.outerHTML='<div class=recipe-selector-thumb style=display:flex;align-items:center;justify-content:center>${getRecipeEmoji(r)}</div>'">` : `<div class="recipe-selector-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem">${getRecipeEmoji(r)}</div>`;
-        return `<div class="recipe-selector-item ${avail?'':'unavailable'}" onclick="${avail?`selectRecipeForDay('${r.id}')`:''}">
+        const mealTypeBadge = `<span class="selector-meal-badge ${r.mealType || 'dinner'}">${getMealTypeEmoji(r.mealType)}</span>`;
+        
+        return `<div class="recipe-selector-item ${avail?'':'unavailable'} ${alreadySelected?'already-selected':''}" onclick="${avail && !alreadySelected?`selectRecipeForDay('${r.id}')`:''}">
             ${thumb}
             <div class="recipe-selector-info">
-                <div class="recipe-selector-name">${r.name}</div>
-                <div class="recipe-selector-meta">${avail?'✅ Available':`⏳ ${ROTATION_DAYS-days}d`} • ${(r.prepTime||0)+(r.cookTime||0)} min</div>
+                <div class="recipe-selector-name">${mealTypeBadge} ${r.name}</div>
+                <div class="recipe-selector-meta">
+                    ${alreadySelected ? '✓ Already added' : (avail?'✅ Available':`⏳ ${ROTATION_DAYS-days}d`)}
+                    • ${(r.prepTime||0)+(r.cookTime||0)} min
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -365,17 +475,66 @@ async function removeMealFromDay(dk, rid, slot) {
 }
 
 // ===== SHOPPING VIEW =====
+let recentlyCheckedItems = []; // Track recently checked items for this session
+
 function renderShoppingView() {
     const cats = generateShoppingList(), container = document.getElementById('shopping-categories');
     const cfg = { produce:{icon:'🥬',name:'Produce'}, protein:{icon:'🥩',name:'Protein'}, dairy:{icon:'🧀',name:'Dairy Alt'}, pantry:{icon:'🫙',name:'Pantry'}, spices:{icon:'🌿',name:'Spices'}, other:{icon:'📦',name:'Other'} };
-    if (!Object.keys(cats).length) { container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🛒</div><h3 class="empty-state-title">Empty</h3><button class="btn btn-primary" onclick="switchView(\'weekly\')">Plan Week</button></div>'; return; }
-    container.innerHTML = Object.entries(cats).map(([cat, items]) => {
+    
+    if (!Object.keys(cats).length) { 
+        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🛒</div><h3 class="empty-state-title">Empty</h3><button class="btn btn-primary" onclick="switchView(\'weekly\')">Plan Week</button></div>'; 
+        return; 
+    }
+    
+    // Build all items for checking recently checked
+    const allItems = Object.values(cats).flat();
+    const checkedItemsData = allItems.filter(item => appData.checkedItems.includes(item.id));
+    
+    // Recently Checked Section
+    let recentlyCheckedHTML = '';
+    if (checkedItemsData.length > 0) {
+        recentlyCheckedHTML = `
+            <div class="recently-checked-section">
+                <div class="recently-checked-header">
+                    <span class="recently-checked-icon">✅</span>
+                    <span class="recently-checked-title">In Cart (${checkedItemsData.length})</span>
+                    <button class="btn btn-small btn-secondary" onclick="clearCheckedItems()">Clear All</button>
+                </div>
+                <div class="recently-checked-items">
+                    ${checkedItemsData.map(item => `
+                        <div class="recently-checked-item" onclick="toggleShoppingItem('${item.id}')">
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-remove">✕</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Category cards - only show unchecked items
+    const categoryHTML = Object.entries(cats).map(([cat, items]) => {
+        const uncheckedItems = items.filter(item => !appData.checkedItems.includes(item.id));
+        if (uncheckedItems.length === 0) return ''; // Hide empty categories
+        
         const c = cfg[cat] || cfg.other;
-        return `<div class="category-card"><div class="category-header ${cat}"><span class="category-icon">${c.icon}</span><span class="category-name">${c.name}</span><span class="category-count">${items.length}</span></div><div class="category-items">${items.map(item => {
-            const chk = appData.checkedItems.includes(item.id);
-            return `<div class="shopping-item ${chk?'checked':''}"><div class="shopping-checkbox ${chk?'checked':''}" onclick="toggleShoppingItem('${item.id}')">${chk?'✓':''}</div><span class="shopping-item-text">${item.name}</span></div>`;
+        return `<div class="category-card"><div class="category-header ${cat}"><span class="category-icon">${c.icon}</span><span class="category-name">${c.name}</span><span class="category-count">${uncheckedItems.length}</span></div><div class="category-items">${uncheckedItems.map(item => {
+            return `<div class="shopping-item"><div class="shopping-checkbox" onclick="toggleShoppingItem('${item.id}')"></div><span class="shopping-item-text">${item.name}</span></div>`;
         }).join('')}</div></div>`;
-    }).join('');
+    }).filter(html => html).join('');
+    
+    container.innerHTML = recentlyCheckedHTML + categoryHTML;
+    
+    // Show completion message if all items checked
+    if (categoryHTML === '' && checkedItemsData.length > 0) {
+        container.innerHTML = recentlyCheckedHTML + `
+            <div class="all-done-message">
+                <div class="all-done-icon">🎉</div>
+                <h3>All done!</h3>
+                <p>You've got everything on your list.</p>
+            </div>
+        `;
+    }
 }
 
 function generateShoppingList() {
@@ -468,12 +627,22 @@ async function toggleFavorite(id) {
 }
 
 // ===== RECIPE DETAIL =====
+let currentRecipeMultiplier = 1;
+
 function viewRecipeDetail(id) {
     const r = appData.recipes.find(x => x.id === id);
     if (!r) return;
+    currentRecipeMultiplier = 1; // Reset multiplier
+    renderRecipeDetailContent(r);
+    openModal('recipe-detail-modal');
+}
+
+function renderRecipeDetailContent(r, multiplier = 1) {
     const time = (r.prepTime||0)+(r.cookTime||0);
     const img = r.imageUrl ? `<img src="${r.imageUrl}" class="recipe-detail-image" onerror="this.style.display='none'">` : '';
     const mealBadge = `<span class="meal-type-badge ${r.mealType || 'dinner'}">${getMealTypeEmoji(r.mealType)} ${(r.mealType || 'dinner').charAt(0).toUpperCase() + (r.mealType || 'dinner').slice(1)}</span>`;
+    const baseServings = r.servings || 4;
+    const adjustedServings = baseServings * multiplier;
     
     const hasIngredients = r.ingredients && r.ingredients.length > 0;
     const hasInstructions = r.instructions && r.instructions.length > 0;
@@ -484,7 +653,7 @@ function viewRecipeDetail(id) {
             <div class="recipe-detail-meta">
                 ${mealBadge}
                 <span>⏱️ ${time} min</span>
-                <span>👥 ${r.servings||4}</span>
+                <span>👥 ${baseServings}</span>
                 ${r.lastCooked?`<span>📅 ${getDaysSinceCooked(r)}d ago</span>`:''}
             </div>
             ${r.sourceUrl?`<a href="${r.sourceUrl}" target="_blank" class="source-link">🔗 View Original Recipe</a>`:''}
@@ -492,8 +661,17 @@ function viewRecipeDetail(id) {
     
     if (hasIngredients) {
         content += `<div class="recipe-detail-section">
-            <h3 class="recipe-detail-section-title">Ingredients</h3>
-            <ul class="ingredient-list">${r.ingredients.map(i=>`<li class="ingredient-item">${i}</li>`).join('')}</ul>
+            <div class="section-header-with-multiplier">
+                <h3 class="recipe-detail-section-title">Ingredients</h3>
+                <div class="serving-multiplier">
+                    <label>Servings:</label>
+                    <button class="multiplier-btn" onclick="adjustServings('${r.id}', -0.5)" ${multiplier <= 0.5 ? 'disabled' : ''}>−</button>
+                    <span class="multiplier-value">${adjustedServings}</span>
+                    <button class="multiplier-btn" onclick="adjustServings('${r.id}', 0.5)">+</button>
+                    ${multiplier !== 1 ? `<span class="multiplier-label">(${multiplier}x)</span>` : ''}
+                </div>
+            </div>
+            <ul class="ingredient-list">${r.ingredients.map(i => `<li class="ingredient-item">${adjustIngredientQuantity(i, multiplier)}</li>`).join('')}</ul>
         </div>`;
     }
     
@@ -521,7 +699,63 @@ function viewRecipeDetail(id) {
     </div>`;
     
     document.getElementById('recipe-detail-content').innerHTML = content;
-    openModal('recipe-detail-modal');
+}
+
+function adjustServings(id, delta) {
+    const r = appData.recipes.find(x => x.id === id);
+    if (!r) return;
+    
+    currentRecipeMultiplier = Math.max(0.5, currentRecipeMultiplier + delta);
+    renderRecipeDetailContent(r, currentRecipeMultiplier);
+}
+
+function adjustIngredientQuantity(ingredient, multiplier) {
+    if (multiplier === 1) return ingredient;
+    
+    // Match quantities at the start: "1 cup", "1/2 lb", "2.5 cups", etc.
+    return ingredient.replace(/^([\d./]+(?:\s*-\s*[\d./]+)?)\s*/, (match, qty) => {
+        // Handle fractions like "1/2"
+        let num;
+        if (qty.includes('/')) {
+            const parts = qty.split('/');
+            num = parseFloat(parts[0]) / parseFloat(parts[1]);
+        } else if (qty.includes('-')) {
+            // Handle ranges like "1-2"
+            const parts = qty.split('-').map(p => parseFloat(p.trim()));
+            const adjusted = parts.map(p => formatQuantity(p * multiplier));
+            return adjusted.join('-') + ' ';
+        } else {
+            num = parseFloat(qty);
+        }
+        
+        if (isNaN(num)) return match;
+        return formatQuantity(num * multiplier) + ' ';
+    });
+}
+
+function formatQuantity(num) {
+    // Convert to nice fractions if close
+    const fractions = [
+        { val: 0.25, str: '¼' },
+        { val: 0.33, str: '⅓' },
+        { val: 0.5, str: '½' },
+        { val: 0.66, str: '⅔' },
+        { val: 0.75, str: '¾' }
+    ];
+    
+    const whole = Math.floor(num);
+    const frac = num - whole;
+    
+    if (frac < 0.1) return whole.toString();
+    
+    for (const f of fractions) {
+        if (Math.abs(frac - f.val) < 0.08) {
+            return whole > 0 ? `${whole} ${f.str}` : f.str;
+        }
+    }
+    
+    // Otherwise just round to 1 decimal
+    return num % 1 === 0 ? num.toString() : num.toFixed(1);
 }
 
 function openEditRecipeModal(id) {
@@ -624,10 +858,33 @@ async function importFromUrl() {
     importBtn.textContent = 'Importing...';
     
     try {
-        // Try to fetch and parse the recipe
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-        const data = await response.json();
-        const html = data.contents;
+        // Try multiple CORS proxies in order
+        const proxies = [
+            `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+        ];
+        
+        let html = null;
+        let lastError = null;
+        
+        for (const proxyUrl of proxies) {
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) continue;
+                
+                const data = await response.json ? await response.json() : await response.text();
+                html = typeof data === 'string' ? data : (data.contents || data);
+                
+                if (html && html.length > 100) break;
+            } catch (e) {
+                lastError = e;
+                continue;
+            }
+        }
+        
+        if (!html) {
+            throw lastError || new Error('All proxies failed');
         
         // Parse HTML
         const parser = new DOMParser();
@@ -648,6 +905,8 @@ async function importFromUrl() {
                     if (recipe) break;
                 }
             } catch (e) {}
+        }
+        
         }
         
         if (recipe) {
